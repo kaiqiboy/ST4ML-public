@@ -5,15 +5,16 @@ import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
 
-class RegionalSpeedExtractor[T <: SpatialMap[Polygon, Array[Trajectory[_, _]], _] : ClassTag] extends Extractor[T] {
-  def extract(smRDD: RDD[T]): Array[(Polygon, Double)] = {
+class SmSpeedExtractor[T <: SpatialMap[Polygon, Array[Trajectory[_, _]], _] : ClassTag] extends Extractor[T] {
+  def extract(smRDD: RDD[T], metric: String = "euclidean", convertKmh: Boolean = false): Array[(Polygon, Double)] = {
 
     val calSpeed: Array[Trajectory[_, _]] => Double = trajArray => {
       if (trajArray.isEmpty) -1
       else {
         val speedArr = trajArray.map(traj =>
-          traj.consecutiveSpatialDistance("euclidean").sum / traj.duration.seconds)
-        speedArr.sum / speedArr.length
+          traj.consecutiveSpatialDistance(metric).sum / traj.duration.seconds)
+        val r = speedArr.sum / speedArr.length
+        if (convertKmh) r / 3.6 else r
       }
     }
 
