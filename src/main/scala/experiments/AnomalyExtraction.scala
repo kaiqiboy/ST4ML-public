@@ -16,7 +16,7 @@ object AnomalyExtraction {
     val threshold = args(4).split(",").map(_.toLong)
     val numPartitions = args(5).toInt
     /**
-     * e.g. local[2] datasets/event_example_parquet_tstr datasets/event_metadata.json datasets/queries_10.txt 23,4 8
+     * e.g. local[2] datasets/porto_taxi_point_0.2_tstr datasets/point_0.2_metadata.json datasets/queries_10.txt 23,4 8
      */
     val spark = SparkSession.builder()
       .appName("AnomalyExtraction")
