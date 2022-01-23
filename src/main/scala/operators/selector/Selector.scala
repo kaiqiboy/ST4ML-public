@@ -35,20 +35,20 @@ class Selector[I <: Instance[_, _, _] : ClassTag](sQuery: Polygon,
   def loadDf(dataDir: String): DataFrame = spark.read.parquet(dataDir)
 
 
-  def selectTraj(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[Trajectory[Option[String], String]] = {
+  def selectTraj(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[I] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.as[T].toRdd
-    if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner)
-    else pInstanceRDD.filter(_.intersects(sQuery, tQuery))
+    if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner).map(_.asInstanceOf[I])
+    else pInstanceRDD.filter(_.intersects(sQuery, tQuery)).map(_.asInstanceOf[I])
   }
 
-  def selectEvent(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[Event[Geometry, Option[String], String]] = {
+  def selectEvent(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[I] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.as[E].toRdd
-    if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner)
-    else pInstanceRDD.filter(_.intersects(sQuery, tQuery))
+    if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner).map(_.asInstanceOf[I])
+    else pInstanceRDD.filter(_.intersects(sQuery, tQuery)).map(_.asInstanceOf[I])
   }
 
   def select(dataDir: String, metaDataDir: String): RDD[I] = {

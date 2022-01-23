@@ -24,6 +24,10 @@ object SmSpeedExtraction {
     val sc = spark.sparkContext
     sc.setLogLevel("ERROR")
 
+    /**
+     * e.g. local[2] datasets/porto_taxi_traj_0.2_tstr datasets/traj_0.2_metadata.json datasets/queries_10.txt 0.01 8
+     */
+
     // read queries
     val f = Source.fromFile(queryFile)
     val ranges = f.getLines().toArray.map(line => {
@@ -56,7 +60,7 @@ object SmSpeedExtraction {
       println(mergedSm.entries.map(x => (x.value._1 / x.value._2)).deep)
 
     }
-    println(s"Stay point extraction ${(nanoTime - t) * 1e-9} s")
+    println(s"Sm speed extraction ${(nanoTime - t) * 1e-9} s")
     sc.stop()
   }
 

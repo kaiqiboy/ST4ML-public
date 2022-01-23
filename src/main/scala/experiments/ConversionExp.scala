@@ -27,7 +27,7 @@ object ConversionExp {
      */
 
     /**
-     * e.g. local[2] datasets/event_example_parquet_tstr 4 1 -8.7,41,-7.87,41.42 1372636800,1404172800 110 110 50  false
+     * e.g. local[2] datasets/porto_taxi_point_0.2_tstr 4 1 -8.7,41,-7.87,41.42 1372636800,1404172800 110 110 50  false
      */
 
     val sRange = args(4).split(",").map(_.toDouble)

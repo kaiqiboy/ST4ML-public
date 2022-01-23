@@ -1,53 +1,66 @@
-//package experiments
-//
-//import instances.{Duration, Event, Extent, Point}
-//import operators.converter.Event2TimeSeriesConverter
-//import operators.selector.Selector
-//import org.apache.spark.sql.SparkSession
-//
-//import java.lang.System.nanoTime
-//
-//object TsFlowExtraction {
-//  case class E(lon: Double, lat: Double, t: Long, id: String)
-//
-//  def main(args: Array[String]): Unit = {
-//    val spark = SparkSession.builder()
-//      .appName("PeriodicalFlowExtraction")
-//      .master(args(0))
-//      .getOrCreate()
-//
-//    val sc = spark.sparkContext
-//    sc.setLogLevel("ERROR")
-//
-//    val fileName = args(1)
-//    val spatialRange = args(2).split(",").map(_.toDouble)
-//    val temporalRange = args(3).split(",").map(_.toLong)
-//    val numPartitions = args(4).toInt
-//
-//    val sQuery = new Extent(spatialRange(0), spatialRange(1), spatialRange(2), spatialRange(3))
-//    val tQuery = Duration(temporalRange(0), temporalRange(1))
-//
-//    val selector = Selector[Event[Point, None.type, String]](sQuery, tQuery, numPartitions)
-//    val res = selector.selectEvent(fileName)
-//
-//    val f: Array[Event[Point, None.type, String]] => Int = x => x.length
-//    val tArray = (tQuery.start until tQuery.end by 86400)
-//      .sliding(2)
-//      .map(x => Duration(x(0), x(1))).toArray
-//
-//    val converter = new Event2TimeSeriesConverter(tArray)
-//    val tsRDD = converter.convert(res, f)
-//    tsRDD.count
-//    val t = nanoTime
-//    val binRDD = tsRDD.flatMap(ts => ts.entries.zipWithIndex.map {
-//      case (bin, idx) => (idx, bin.value)
-//    })
-//    val binCount = binRDD.reduceByKey(_ + _).collect
-//    val t2 = nanoTime
-//
-//    println(binCount.deep)
-//    println((t2 - t) * 1e-9)
-//
-//    sc.stop()
-//  }
-//}
+package experiments
+
+import instances.{Duration, Event, Extent, Point}
+import operators.converter.Event2TimeSeriesConverter
+import operators.selector.Selector
+import org.apache.spark.sql.SparkSession
+
+import java.lang.System.nanoTime
+import scala.io.Source
+
+object TsFlowExtraction {
+  case class E(lon: Double, lat: Double, t: Long, id: String)
+
+  /**
+   * e.g. local[2] datasets/porto_taxi_point_0.2_tstr datasets/point_0.2_metadata.json datasets/queries_10.txt 3600 16
+   */
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession.builder()
+      .appName("TsFlowExtraction")
+      .master(args(0))
+      .getOrCreate()
+    val sc = spark.sparkContext
+    sc.setLogLevel("ERROR")
+
+    val fileName = args(1)
+    val metadata = args(2)
+    val queryFile = args(3)
+    val tSplit = args(4).toInt
+    val numPartitions = args(4).toInt
+
+    // read queries
+    val f = Source.fromFile(queryFile)
+    val ranges = f.getLines().toArray.map(line => {
+      val r = line.split(" ")
+      (Extent(r(0).toDouble, r(1).toDouble, r(2).toDouble, r(3).toDouble).toPolygon, Duration(r(4).toLong, r(5).toLong))
+    })
+    val t = nanoTime()
+    type EVENT = Event[Point, None.type, String]
+
+    for ((spatial, temporal) <- ranges) {
+      val selector = Selector[EVENT](spatial, temporal, numPartitions)
+      val eventRDD = selector.selectEvent(fileName, metadata, false)
+      val tRanges = splitTemporal(Array(temporal.start, temporal.end), tSplit)
+      val converter = new Event2TimeSeriesConverter(tRanges)
+      val f: Array[Event[Point, None.type, String]] => Int = _.length
+      val tsRDD = converter.convert(eventRDD, f)
+      val res = tsRDD.collect()
+
+      def valueMerge(x: Int, y: Int): Int = x + y
+
+      val mergedTs = res.drop(1).foldRight(res.head)(_.merge(_, valueMerge, (_, _) => None))
+      eventRDD.unpersist()
+      println(mergedTs.entries.map(_.value).deep)
+    }
+    println(s"Anomaly extraction ${(nanoTime - t) * 1e-9} s")
+    sc.stop()
+  }
+
+  def splitTemporal(temporalRange: Array[Long], tStep: Int): Array[Duration] = {
+    val tMin = temporalRange(0)
+    val tMax = temporalRange(1)
+    val tSplit = ((tMax - tMin) / tStep).toInt
+    val ts = (0 to tSplit).map(x => x * tStep + tMin).sliding(2).toArray
+    for (t <- ts) yield Duration(t(0), t(1))
+  }
+}

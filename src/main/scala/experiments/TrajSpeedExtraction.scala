@@ -20,7 +20,7 @@ object TrajSpeedExtraction {
       .getOrCreate()
 
     /**
-     * e.g. local[2] datasets/traj_example_parquet_tstr datasets/traj_metadata.json datasets/queries_10.txt 8
+     * e.g. local[2] datasets/porto_taxi_traj_0.2_tstr datasets/traj_0.2_metadata.json datasets/queries_10.txt 8
      */
 
     val sc = spark.sparkContext
@@ -42,7 +42,7 @@ object TrajSpeedExtraction {
       trajRDD.unpersist()
       println(res.take(5).deep)
     }
-    println(s"Stay point extraction ${(nanoTime - t) * 1e-9} s")
+    println(s"Traj speed extraction ${(nanoTime - t) * 1e-9} s")
     sc.stop()
   }
 }

@@ -22,6 +22,10 @@ object LoadingWithMetaDataExp {
     val ratio = args(7).toDouble
     val useMetadata = args(8).toBoolean
 
+    /**
+     * e.g. local[2] datasets/porto_taxi_point_0.2_tstr 16 datasets/point_0.2_metadata.json -8.7,41,-7.87,41.42 1372636800,1404172800 event 0.89 true
+     */
+
     val spark = SparkSession.builder()
       .appName("LoadingWithMetaDataExp")
       .master(master)
@@ -36,7 +40,6 @@ object LoadingWithMetaDataExp {
 
     var t = nanoTime()
 
-    println(ratio)
     val start1 = random.nextDouble * (1 - sqrt(ratio))
     val start2 = random.nextDouble * (1 - sqrt(ratio))
     val start3 = random.nextDouble * (1 - ratio)

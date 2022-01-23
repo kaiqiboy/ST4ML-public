@@ -22,6 +22,10 @@ object RasterTransitionExtraction {
       .master(master)
       .getOrCreate()
 
+    /**
+     * e.g. local[2] datasets/porto_taxi_traj_0.2_tstr datasets/traj_0.2_metadata.json datasets/queries_10.txt 0.1 3600 16
+     */
+
     val sc = spark.sparkContext
     sc.setLogLevel("ERROR")
 
