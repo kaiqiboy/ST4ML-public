@@ -1,4 +1,4 @@
-name := "st-tool"
+name := "st4ml"
 
 version := "3.0"
 
