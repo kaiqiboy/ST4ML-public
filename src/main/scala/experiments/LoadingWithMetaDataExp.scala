@@ -1,8 +1,9 @@
 package experiments
 
 import instances._
-import operators.selector.SelectionUtils.{E, T}
+import instances.onDiskFormats._
 import operators.selector.Selector
+import operators.selector.SelectionUtils._
 import org.apache.spark.sql.SparkSession
 
 import java.lang.System.nanoTime
@@ -63,7 +64,7 @@ object LoadingWithMetaDataExp {
       else {
         //no metadata
         t = nanoTime()
-        val eventRDD = spark.read.parquet(fileName).drop("pId").as[E].toRdd //.repartition(numPartitions)
+        val eventRDD = spark.read.parquet(fileName).drop("pId").as[STEvent].toRdd //.repartition(numPartitions)
         val rdd2 = eventRDD.filter(_.intersects(spatial, temporal))
         println(rdd2.count)
         println(s"no metadata: ${(nanoTime() - t) * 1e-9} s.\n")
@@ -84,7 +85,7 @@ object LoadingWithMetaDataExp {
       // no metadata
       else {
         t = nanoTime()
-        val trajDf = spark.read.parquet(fileName).drop("pId").as[T]
+        val trajDf = spark.read.parquet(fileName).drop("pId").as[STTraj]
         val trajRDD = trajDf.toRdd //.repartition(numPartitions)
         val rdd2 = trajRDD.filter(_.intersects(spatial, temporal))
         println(rdd2.count)

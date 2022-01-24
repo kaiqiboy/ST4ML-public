@@ -1,10 +1,11 @@
 package experiments
 
 import instances._
-import operators.converter.{Event2RasterConverter, Event2SpatialMapConverter, Event2TimeSeriesConverter, Traj2RasterConverter, Traj2SpatialMapConverter, Traj2TimeSeriesConverter}
-import operators.selector.SelectionUtils.{E, T}
+import operators.converter._
+import instances.onDiskFormats._
 import operators.selector.partitioner.HashPartitioner
 import org.apache.spark.sql.SparkSession
+import operators.selector.SelectionUtils._
 
 import java.lang.System.nanoTime
 
@@ -47,7 +48,7 @@ object ConversionExp {
     sc.setLogLevel("ERROR")
 
     if (m == "1") {
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[E]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STEvent]
         .toRdd.map(_.asInstanceOf[Event[Point, None.type, String]])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)
@@ -62,7 +63,7 @@ object ConversionExp {
 
     else if (m == "2") {
       type TRAJ = Trajectory[None.type, String]
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[T]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STTraj]
         .toRdd.map(_.asInstanceOf[TRAJ])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)
@@ -76,7 +77,7 @@ object ConversionExp {
 
     }
     else if (m == "3") {
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[E]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STEvent]
         .toRdd.map(_.asInstanceOf[Event[Point, None.type, String]])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)
@@ -92,7 +93,7 @@ object ConversionExp {
       println(s"Conversion time: ${(nanoTime - t) * 1e-9} s")
     }
     else if (m == "4") {
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[T]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STTraj]
         .toRdd.map(_.asInstanceOf[Trajectory[None.type, String]])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)
@@ -109,7 +110,7 @@ object ConversionExp {
     }
 
     else if (m == "5") {
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[E]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STEvent]
         .toRdd.map(_.asInstanceOf[Event[Point, None.type, String]])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)
@@ -122,7 +123,7 @@ object ConversionExp {
       println(s"Conversion time: ${(nanoTime - t) * 1e-9} s")
     }
     else if (m == "6") {
-      val inputRDD = spark.read.parquet(fileName).drop("pId").as[T]
+      val inputRDD = spark.read.parquet(fileName).drop("pId").as[STTraj]
         .toRdd.map(_.asInstanceOf[Trajectory[None.type, String]])
       val partitioner = new HashPartitioner(numPartitions)
       val selectedRDD = partitioner.partition(inputRDD)

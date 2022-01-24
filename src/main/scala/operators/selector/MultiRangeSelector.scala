@@ -6,6 +6,7 @@ import operators.selector.SelectionUtils._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import instances.onDiskFormats._
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -37,7 +38,7 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
   def selectEvent(dataDir: String, metaDataDir: String): RDD[SttEvent] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[E].toRdd
+    val pInstanceRDD = pInstanceDf.as[STEvent].toRdd
     val queries = sQuery zip tQuery
     pInstanceRDD.stPartition(partitioner)
       .filter(o =>
@@ -49,7 +50,7 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
                           accurate: Boolean = false): RDD[(SttEvent, Array[Int])] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[E].toRdd
+    val pInstanceRDD = pInstanceDf.as[STEvent].toRdd
     val queries = (sQuery zip tQuery).zipWithIndex
     pInstanceRDD.stPartition(partitioner)
       .map(o => {
@@ -69,7 +70,7 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
   def selectTraj(dataDir: String, metaDataDir: String): RDD[SttTraj] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[T].toRdd
+    val pInstanceRDD = pInstanceDf.as[STTraj].toRdd
     val queries = sQuery zip tQuery
     pInstanceRDD.stPartition(partitioner)
       .filter(o =>
@@ -81,7 +82,7 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
                          accurate: Boolean = false): RDD[(SttTraj, Array[Int])] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[T].toRdd
+    val pInstanceRDD = pInstanceDf.as[STTraj].toRdd
     val queries = (sQuery zip tQuery).zipWithIndex
     pInstanceRDD.stPartition(partitioner)
       .map(o => {
@@ -102,8 +103,8 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.head(1).head.get(0) match {
-      case _: String => pInstanceDf.as[E].toRdd
-      case _: mutable.WrappedArray[_] => pInstanceDf.as[T].toRdd
+      case _: String => pInstanceDf.as[STEvent].toRdd
+      case _: mutable.WrappedArray[_] => pInstanceDf.as[STTraj].toRdd
       case _ => throw new ClassCastException("instance type not supported.")
     }
     val queries = sQuery zip tQuery
@@ -119,8 +120,8 @@ class MultiRangeSelector[I <: Instance[_, _, _] : ClassTag](sQuery: Array[Polygo
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.head(1).head.get(0) match {
-      case _: String => pInstanceDf.as[E].toRdd
-      case _: mutable.WrappedArray[_] => pInstanceDf.as[T].toRdd
+      case _: String => pInstanceDf.as[STEvent].toRdd
+      case _: mutable.WrappedArray[_] => pInstanceDf.as[STTraj].toRdd
       case _ => throw new ClassCastException("instance type not supported.")
     }
     val queries = (sQuery zip tQuery).zipWithIndex

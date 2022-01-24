@@ -4,12 +4,13 @@ import instances.{Duration, Entry, Extent, Polygon, Raster, Trajectory}
 import operators.converter.Traj2RasterConverter
 import operators.selector.Selector
 import org.apache.spark.sql.SparkSession
-
+import operators.selector.SelectionUtils.ReadRaster
 import java.lang.System.nanoTime
 import scala.io.Source
 
 object RasterTransitionExtraction {
   def main(args: Array[String]): Unit = {
+
     val master = args(0)
     val fileName = args(1)
     val metadata = args(2)
@@ -28,6 +29,8 @@ object RasterTransitionExtraction {
 
     val sc = spark.sparkContext
     sc.setLogLevel("ERROR")
+
+    ReadRaster("datasets/rasterExample.json")
 
     // read queries
     val f = Source.fromFile(queryFile)
@@ -53,6 +56,7 @@ object RasterTransitionExtraction {
       val trajRDD = selector.selectTraj(fileName, metadata, false)
       val sRanges = splitSpatial(spatial, gridSize)
       val tRanges = splitTemporal(Array(temporal.start, temporal.end), tStep)
+
       val stRanges = for (s <- sRanges; t <- tRanges) yield (s, t)
       val converter = new Traj2RasterConverter(stRanges.map(_._1), stRanges.map(_._2))
       val rasterRDD = converter.convert(trajRDD).map(raster => Raster(

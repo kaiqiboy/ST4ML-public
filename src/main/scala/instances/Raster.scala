@@ -1,6 +1,9 @@
 package instances
 
-import scala.reflect.{ClassTag}
+import instances.onDiskFormats.{RCell, STRaster}
+import org.apache.spark.sql.SparkSession
+
+import scala.reflect.ClassTag
 import scala.util.control.Breaks._
 
 class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
@@ -55,7 +58,7 @@ class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
           if (((minX1 < minX2 && minX2 < maxX1) || (minX2 < minX1 && minX1 < maxX2)) &&
             ((minY1 < minY2 && minY2 < maxY1) || (minY2 < minY1 && minY1 < maxY2)) &&
             ((minZ1 < minZ2 && minZ2 < maxZ1) || (minZ2 < minZ1 && minZ1 < maxZ2))) {
-//            println(minX1, maxX1, minY1, maxY1, minZ1, maxZ1, minX2, maxX2, minY2, maxY2, minZ2, maxZ2)
+            //            println(minX1, maxX1, minY1, maxY1, minZ1, maxZ1, minX2, maxX2, minY2, maxY2, minZ2, maxZ2)
             return true
           }
         })
@@ -404,6 +407,16 @@ class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
   }
 
   override def toGeometry: Polygon = extent.toPolygon
+
+  def saveStructure(dir: String): Unit = {
+    val cells = entries.map(entry => {
+      RCell(entry.spatial.toString, entry.temporal.toString)
+    })
+    val r = STRaster(cells, if(this.data.isInstanceOf[None.type]) None else Some(this.data.toString))
+    val spark = SparkSession.builder.getOrCreate()
+    import spark.implicits._
+    spark.createDataFrame(Array(r)).repartition(1).as[STRaster].write.option("ignoreNullFields", "false").json(dir)
+  }
 
 }
 

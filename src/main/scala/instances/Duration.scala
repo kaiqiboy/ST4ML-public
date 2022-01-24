@@ -51,7 +51,7 @@ case class Duration(start: Long, end: Long) {
 
 
   override def toString: String =
-    s"Duration($start, $end)"
+    s"Duration ($start, $end)"
 
 }
 

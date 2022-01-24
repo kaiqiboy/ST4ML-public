@@ -4,9 +4,10 @@ import instances._
 import operators.selector.partitioner.STPartitioner
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Dataset, SparkSession}
+import instances.onDiskFormats._
 
-import scala.collection.mutable
 import scala.reflect.ClassTag
+import scala.util.matching.Regex
 
 object SelectionUtils {
 
@@ -98,23 +99,20 @@ object SelectionUtils {
     }
   }
 
-  /** case classes for persisting ST instances */
-  //  case class E(lon: Double, lat: Double, t: Long, v: String, d: String) // event
-  //
-  //  case class EwP(lon: Double, lat: Double, t: Long, pId: Int) // event with partition ID
-  //
-  //  case class T(id: String, entries: Array[E]) // trajectory
-  //
-  //  case class TwP(id: String, entries: Array[E], pId: Int) // trajectory with partition ID
-  case class E(shape: String, timeStamp: Array[Long], v: Option[String], d: String)
-
-  case class EwP(shape: String, timeStamp: Array[Long], v: Option[String], d: String, pId: Int)
-
-  case class TrajPoint(lon: Double, lat: Double, t: Array[Long], v: Option[String])
-
-  case class T(points: Array[TrajPoint], d: String)
-
-  case class TwP(points: Array[TrajPoint], d: String, pId: Int)
+  object ReadRaster {
+    def apply(dir: String): (Array[Geometry], Array[Duration]) = {
+      val spark: SparkSession = SparkSession.builder.getOrCreate()
+      import spark.implicits._
+      val rasterDs = spark.read.json(dir).as[STRaster]
+      assert(rasterDs.count == 1, "Can only load 1 raster at a time.")
+      rasterDs.rdd.take(1).map(x => {
+        val cells = x.cells
+        val spatials = cells.map(c => String2Geometry(c.shape))
+        val temporals = cells.map(c => String2Duration(c.temporal))
+        (spatials, temporals)
+      }).head
+    }
+  }
 
   /** rdd2Df conversion functions */
   //  trait Ss {
@@ -128,14 +126,14 @@ object SelectionUtils {
     import spark.implicits._
 
     def toDs(vFunc: V => Option[String] = x => if (x.isInstanceOf[None.type]) None else Some(x.toString),
-             dFunc: D => String = _.toString): Dataset[E] = {
+             dFunc: D => String = _.toString): Dataset[STEvent] = {
       rdd.map(event => {
         val entry = event.entries.head
         val timeStamp = Array(entry.temporal.start, entry.temporal.end)
         val v = vFunc(entry.value)
         val d = dFunc(event.data)
         val shape = entry.spatial.toString
-        E(shape, timeStamp, v, d)
+        STEvent(shape, timeStamp, v, d)
       }).toDS
     }
   }
@@ -146,14 +144,14 @@ object SelectionUtils {
     import spark.implicits._
 
     def toDs(vFunc: V => Option[String] = x => if (x.isInstanceOf[None.type]) None else Some(x.toString),
-             dFunc: D => String = _.toString): Dataset[EwP] = {
+             dFunc: D => String = _.toString): Dataset[STEventwP] = {
       rdd.map { case (event, pId) =>
         val entry = event.entries.head
         val timeStamp = Array(entry.temporal.start, entry.temporal.end)
         val v = vFunc(entry.value)
         val d = dFunc(event.data)
         val shape = entry.spatial.toString
-        EwP(shape, timeStamp, v, d, pId)
+        STEventwP(shape, timeStamp, v, d, pId)
       }
     }.toDS
 
@@ -169,11 +167,11 @@ object SelectionUtils {
     import spark.implicits._
 
     def toDs(vFunc: V => Option[String] = x => if (x.isInstanceOf[None.type]) None else Some(x.toString),
-             dFunc: D => String = x => x.toString): Dataset[T] = {
+             dFunc: D => String = x => x.toString): Dataset[STTraj] = {
       rdd.map(traj => {
         val points = traj.entries.map(e => TrajPoint(e.spatial.getX, e.spatial.getY, Array(e.temporal.start, e.temporal.end), vFunc(e.value)))
         val d = dFunc(traj.data)
-        T(points, d)
+        STTraj(points, d)
       }).toDS
     }
   }
@@ -185,11 +183,11 @@ object SelectionUtils {
     import spark.implicits._
 
     def toDs(vFunc: V => Option[String] = x => if (x.isInstanceOf[None.type]) None else Some(x.toString),
-             dFunc: D => String = x => x.toString): Dataset[TwP] = {
+             dFunc: D => String = x => x.toString): Dataset[STTrajwP] = {
       rdd.map { case (traj, pId) =>
         val points = traj.entries.map(e => TrajPoint(e.spatial.getX, e.spatial.getY, Array(e.temporal.start, e.temporal.end), vFunc(e.value)))
         val d = dFunc(traj.data)
-        TwP(points, d, pId)
+        STTrajwP(points, d, pId)
 
       }.toDS
     }
@@ -200,7 +198,7 @@ object SelectionUtils {
                maxRecords: Int = 10000): Unit = this.toDs(vFunc, dFunc).toDisk(dataDir, maxRecords)
   }
 
-  implicit class TrajDsFuncs(ds: Dataset[T]) {
+  implicit class TrajDsFuncs(ds: Dataset[STTraj]) {
     def toRdd: RDD[Trajectory[Option[String], String]] = {
       ds.rdd.map(traj => {
         val data = traj.d
@@ -221,7 +219,7 @@ object SelectionUtils {
     }
   }
 
-  implicit class PTrajDsFuncs(ds: Dataset[TwP]) {
+  implicit class PTrajDsFuncs(ds: Dataset[STTrajwP]) {
     def toRdd: RDD[(Trajectory[Option[String], String], Int)] = {
       ds.rdd.map(trajWId => {
         val data = trajWId.d
@@ -243,7 +241,7 @@ object SelectionUtils {
     }
   }
 
-  implicit class EventDsFuncs(ds: Dataset[E]) {
+  implicit class EventDsFuncs(ds: Dataset[STEvent]) {
     def toRdd: RDD[Event[Geometry, Option[String], String]] = {
       ds.rdd.map(x => {
         val shape = x.shape
@@ -256,7 +254,7 @@ object SelectionUtils {
     }
   }
 
-  implicit class PEventDsFuncs(ds: Dataset[EwP]) {
+  implicit class PEventDsFuncs(ds: Dataset[STEventwP]) {
     def toRdd: RDD[(Event[Geometry, Option[String], String], Int)] = {
       ds.rdd.map(x => {
         val shape = x.shape
@@ -295,6 +293,13 @@ object SelectionUtils {
           Polygon(points)
         case _ => throw new ClassCastException("Unknown shape Only point, linestring and polygon are supported.")
       }
+    }
+  }
+
+  object String2Duration {
+    def apply(str: String): Duration = {
+      val arr = str.split("Duration")(1).split(",").map(_.replaceAll("[() ]", "")).map(_.toLong)
+      Duration(arr.head, arr.last)
     }
   }
 

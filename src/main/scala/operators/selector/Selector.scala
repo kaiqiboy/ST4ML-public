@@ -7,6 +7,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.locationtech.jts.geom.Polygon
+import instances.onDiskFormats._
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -38,7 +39,7 @@ class Selector[I <: Instance[_, _, _] : ClassTag](sQuery: Polygon,
   def selectTraj(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[I] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[T].toRdd
+    val pInstanceRDD = pInstanceDf.as[STTraj].toRdd
     if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner).map(_.asInstanceOf[I])
     else pInstanceRDD.filter(_.intersects(sQuery, tQuery)).map(_.asInstanceOf[I])
   }
@@ -46,7 +47,7 @@ class Selector[I <: Instance[_, _, _] : ClassTag](sQuery: Polygon,
   def selectEvent(dataDir: String, metaDataDir: String = "None", partition: Boolean = true): RDD[I] = {
     import spark.implicits._
     val pInstanceDf = if (metaDataDir == "None") loadDf(dataDir) else loadDf(dataDir, metaDataDir)
-    val pInstanceRDD = pInstanceDf.as[E].toRdd
+    val pInstanceRDD = pInstanceDf.as[STEvent].toRdd
     if (partition) pInstanceRDD.filter(_.intersects(sQuery, tQuery)).stPartition(partitioner).map(_.asInstanceOf[I])
     else pInstanceRDD.filter(_.intersects(sQuery, tQuery)).map(_.asInstanceOf[I])
   }
@@ -55,8 +56,8 @@ class Selector[I <: Instance[_, _, _] : ClassTag](sQuery: Polygon,
     import spark.implicits._
     val pInstanceDf = loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.head(1).head.get(0) match {
-      case _: String => pInstanceDf.as[E].toRdd
-      case _: mutable.WrappedArray[_] => pInstanceDf.as[T].toRdd
+      case _: String => pInstanceDf.as[STEvent].toRdd
+      case _: mutable.WrappedArray[_] => pInstanceDf.as[STTraj].toRdd
       case _ => throw new ClassCastException("instance type not supported.")
     }
     val partitionedRDD = if (pInstanceRDD.getNumPartitions < parallelism)
@@ -71,8 +72,8 @@ class Selector[I <: Instance[_, _, _] : ClassTag](sQuery: Polygon,
     import spark.implicits._
     val pInstanceDf = loadDf(dataDir, metaDataDir)
     val pInstanceRDD = pInstanceDf.head(1).head.get(0) match {
-      case _: String => pInstanceDf.as[E].toRdd
-      case _: mutable.WrappedArray[_] => pInstanceDf.as[T].toRdd
+      case _: String => pInstanceDf.as[STEvent].toRdd
+      case _: mutable.WrappedArray[_] => pInstanceDf.as[STTraj].toRdd
       case _ => throw new ClassCastException("instance type not supported.")
     }
     val partitionedRDD = if (pInstanceRDD.getNumPartitions < parallelism)

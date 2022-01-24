@@ -1,6 +1,6 @@
 package experiments
 
-import instances.{Duration, Event, Extent, Point}
+import instances.{Duration, Event, Extent, LineString, Point}
 import operators.selector.Selector
 import org.apache.spark.sql.SparkSession
 
