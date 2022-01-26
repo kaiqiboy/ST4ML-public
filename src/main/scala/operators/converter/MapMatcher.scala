@@ -4,7 +4,7 @@ import instances.geometryHelper.road.{RoadGraph, RoadGrid}
 import instances.GeometryImplicits.withExtraPointOps
 import instances.RoadNetwork.RoadNetwork
 import instances._
-import operators.selector.SelectionUtils.T
+import instances.onDiskFormats.STTraj
 import org.apache.spark.sql.SparkSession
 import org.locationtech.jts.geom.Coordinate
 

@@ -8,14 +8,15 @@ import scala.collection.mutable
 import scala.math.{floor, sqrt}
 import scala.reflect.ClassTag
 
-class TSTRPartitioner(override val numPartitions: Int,
+class TSTRPartitioner(sNumPartition: Int, tNumPartition: Int,
                       override var samplingRate: Option[Double] = None,
                       ref: String = "center",
                       threshold: Double = 0)
   extends STPartitioner {
+
+  override val numPartitions: Int = sNumPartition * tNumPartition
   val spark: SparkSession = SparkSession.builder.getOrCreate()
-  val tNumPartition: Int = sqrt(numPartitions).toInt
-  val sNumPartition: Int = numPartitions / tNumPartition
+
 
   override def partition[T <: Instance[_, _, _] : ClassTag](dataRDD: RDD[T]): RDD[T] = {
     val temporalPartitioner = new TemporalPartitioner(tNumPartition, samplingRate, ref)
@@ -34,13 +35,6 @@ class TSTRPartitioner(override val numPartitions: Int,
         stRanges += ((i * sNumPartition + s._1) -> (tRanges(i), s._2))
     }
     val idxRDD = dataRDD.map(x => {
-      //      val idxs = stRanges.filter(st => x.intersects(st._2._2, st._2._1))
-      //      val idx = if (idxs.isEmpty) {
-      //        stRanges.filter(st => st._2._1.intersects(x.duration))
-      //          .mapValues(st => st._2.distance(x.spatialCenter))
-      //          .minBy(_._2)._1
-      //      }
-      //      else idxs.head._1
       val idxs = stRanges.filter(st => {
         val centroid = x.center
         Event(centroid._1, Duration(centroid._2)).intersects(st._2._2, st._2._1)
@@ -194,5 +188,14 @@ class TSTRPartitioner(override val numPartitions: Int,
     }
     if (threshold != 0) boxesWIthID.mapValues(rectangle => rectangle.expandBy(threshold)).map(identity)
     else boxesWIthID
+  }
+
+}
+
+object TSTRPartitioner {
+  def apply(numPartitions: Int, samplingRate: Option[Double] = None, ref: String = "center", threshold: Double = 0): TSTRPartitioner = {
+    val tNumPartition: Int = sqrt(numPartitions).toInt
+    val sNumPartition: Int = numPartitions / tNumPartition
+    new TSTRPartitioner(tNumPartition, sNumPartition, samplingRate, ref, threshold)
   }
 }

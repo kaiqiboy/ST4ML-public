@@ -1,0 +1,9 @@
+out/
+.idea/
+project/
+target/
+sttool-doc/
+venv/
+null/
+.bsp/
+datasets/

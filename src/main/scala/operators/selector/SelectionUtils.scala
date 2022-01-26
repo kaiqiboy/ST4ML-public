@@ -3,19 +3,30 @@ package operators.selector
 import instances._
 import operators.selector.partitioner.STPartitioner
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{Dataset, SparkSession, types}
 import instances.onDiskFormats._
+import org.apache.spark.sql.types.{ArrayType, DoubleType, LongType, MapType, StringType, StructField, StructType}
 
 import scala.reflect.ClassTag
-import scala.util.matching.Regex
 
 object SelectionUtils {
 
   case class PartitionInfo(pId: Long,
                            spatial: Array[Double],
                            temporal: Array[Long],
-                           count: Long
+                           count: Long,
+                           nonST: Map[String, Array[Double]] = Map[String, Array[Double]]()
                           )
+
+  val pInfoSchema: StructType = StructType(
+    List(
+      StructField("pId", LongType, false),
+      StructField("spatial", ArrayType(DoubleType, false), true),
+      StructField("temporal", ArrayType(LongType, false), true),
+      StructField("count", LongType, true),
+      StructField("nonST", MapType(StringType, ArrayType(DoubleType, false), true))
+    )
+  )
 
   implicit class InstanceFuncs[T <: Instance[_ <: Geometry, _, _] : ClassTag](rdd: RDD[T]) {
     def calPartitionInfo(rdd: RDD[(T, Int)]): Array[(Int, Extent, Duration, Int)] = {
@@ -62,20 +73,22 @@ object SelectionUtils {
   }
 
   object LoadPartitionInfo {
-    def apply(dir: String): RDD[(Long, Extent, Duration, Long)] = {
+    def apply(dir: String): RDD[(Long, Extent, Duration, Long, Map[String, Array[Double]])] = {
       val spark: SparkSession = SparkSession.builder.getOrCreate()
       import spark.implicits._
-      val metadataDs = spark.read.json(dir).as[PartitionInfo]
+      spark.read.schema(pInfoSchema).json(dir).printSchema()
+      val metadataDs = spark.read.schema(pInfoSchema).json(dir).as[PartitionInfo]
       metadataDs.rdd.map(x => (x.pId,
         Extent(x.spatial(0), x.spatial(1), x.spatial(2), x.spatial(3)), Duration(x.temporal(0),
         x.temporal(1)),
-        x.count)
+        x.count,
+        x.nonST)
       )
     }
   }
 
   object LoadPartitionInfoLocal {
-    def apply(dir: String): Array[(Long, Extent, Duration, Long)] = {
+    def apply(dir: String): Array[(Long, Extent, Duration, Long, Map[String, Array[Double]])] = {
       import scala.util.parsing.json._
       val f = scala.io.Source.fromFile(dir)
       f.getLines.map(line => {
@@ -86,7 +99,8 @@ object SelectionUtils {
         val t = map("temporal").asInstanceOf[List[Double]].map(_.toLong)
         val temporal = new Duration(t.head, t(1))
         val count = map("count").asInstanceOf[Double].toLong
-        (pId, spatial, temporal, count)
+        val nonST = map.getOrElse("nonST", Map[String, Array[Double]]()).asInstanceOf[Map[String, Array[Double]]]
+        (pId, spatial, temporal, count, nonST)
       }).toArray
     }
   }
@@ -300,6 +314,15 @@ object SelectionUtils {
     def apply(str: String): Duration = {
       val arr = str.split("Duration")(1).split(",").map(_.replaceAll("[() ]", "")).map(_.toLong)
       Duration(arr.head, arr.last)
+    }
+  }
+
+  object ParseMapString{
+    def apply(input: String): Map[String, Double] = {
+      val fields = input.split("Map").last.replaceAll("[() ]","").split(",").map(x => x.split("->"))
+      var map =  Map[String, Double]()
+      fields.foreach(x =>map =  map + (x(0) -> x(1).toDouble))
+      map
     }
   }
 

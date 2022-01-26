@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/st-tool.iml" filepath="$PROJECT_DIR$/.idea/modules/st-tool.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/st-tool-build.iml" filepath="$PROJECT_DIR$/.idea/modules/st-tool-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/st4ml.iml" filepath="$PROJECT_DIR$/.idea/modules/st4ml.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/st4ml-build.iml" filepath="$PROJECT_DIR$/.idea/modules/st4ml-build.iml" />
     </modules>
   </component>
 </project>

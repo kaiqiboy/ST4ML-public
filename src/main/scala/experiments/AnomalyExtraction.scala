@@ -1,6 +1,7 @@
 package experiments
 
 import instances.{Duration, Event, Extent, LineString, Point}
+import operators.extractor.AnomalyExtractor
 import operators.selector.Selector
 import org.apache.spark.sql.SparkSession
 
@@ -13,7 +14,7 @@ object AnomalyExtraction {
     val fileName = args(1)
     val metadata = args(2)
     val queryFile = args(3)
-    val threshold = args(4).split(",").map(_.toLong)
+    val threshold = args(4).split(",").map(_.toInt)
     val numPartitions = args(5).toInt
     /**
      * e.g. local[2] datasets/porto_taxi_point_0.2_tstr datasets/point_0.2_metadata.json datasets/queries_10.txt 23,4 8
@@ -35,14 +36,16 @@ object AnomalyExtraction {
 
     val t = nanoTime()
     type EVENT = Event[Point, Option[String], String]
-    val condition = if (threshold(0) > threshold(1)) (x: Double) => x >= threshold(0) || x < threshold(1)
-    else (x: Double) => x >= threshold(0) && x < threshold(1)
+//    val condition = if (threshold(0) > threshold(1)) (x: Double) => x >= threshold(0) || x < threshold(1)
+//    else (x: Double) => x >= threshold(0) && x < threshold(1)
 
     for ((spatial, temporal) <- ranges) {
       val selector = Selector[EVENT](spatial, temporal, numPartitions)
       val eventRDD = selector.selectEvent(fileName, metadata, false)
+      val extractor = new AnomalyExtractor[EVENT]
+      val res = extractor.extract(eventRDD, threshold).map(_.data).collect
 
-      val res = eventRDD.filter(x => condition(x.duration.hours)).map(_.data).collect
+//      val res = eventRDD.filter(x => condition(x.duration.hours)).map(_.data).collect
       eventRDD.unpersist()
       println(res.take(5).deep)
     }
