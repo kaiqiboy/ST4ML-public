@@ -1,7 +1,7 @@
 package experiments
 
 import instances.{Duration, Event, Extent, LineString, Point}
-import operators.extractor.AnomalyExtractor
+import operators.extractor.EventAnomalyExtractor
 import operators.selector.Selector
 import org.apache.spark.sql.SparkSession
 
@@ -42,7 +42,7 @@ object AnomalyExtraction {
     for ((spatial, temporal) <- ranges) {
       val selector = Selector[EVENT](spatial, temporal, numPartitions)
       val eventRDD = selector.selectEvent(fileName, metadata, false)
-      val extractor = new AnomalyExtractor[EVENT]
+      val extractor = new EventAnomalyExtractor[EVENT]
       val res = extractor.extract(eventRDD, threshold).map(_.data).collect
 
 //      val res = eventRDD.filter(x => condition(x.duration.hours)).map(_.data).collect

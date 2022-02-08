@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import scala.reflect.ClassTag
 
-class AnomalyExtractor[T <: Instance[_, _, _] : ClassTag] extends Extractor[T] {
+class EventAnomalyExtractor[T <: Instance[_, _, _] : ClassTag] extends Extractor[T] {
   def timeLong2String(tm: Long): String = {
     val fm = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     val tim = fm.format(new Date(tm * 1000))

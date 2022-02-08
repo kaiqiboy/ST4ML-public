@@ -4,10 +4,9 @@ import instances.onDiskFormats.{RCell, STRaster}
 import org.apache.spark.sql.SparkSession
 
 import scala.reflect.ClassTag
-import scala.util.control.Breaks._
 
-class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
-                                  override val data: D)
+class Raster[S <: Geometry : ClassTag, V, D](override val entries: Array[Entry[S, V]],
+                                             override val data: D)
   extends Instance[S, V, D] {
 
   require(validation,
@@ -16,6 +15,7 @@ class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
 
   lazy val temporals: Array[Duration] = entries.map(_.temporal)
   lazy val temporal: Duration = Duration(temporals.head.start, temporals.last.end)
+  lazy val spatials: Array[S] = entries.map(_.spatial)
 
   def isRegular: Boolean = {
     val cubes = entries.map(x => (x.spatial.getEnvelopeInternal.getMinX,
@@ -412,7 +412,7 @@ class Raster[S <: Geometry, V, D](override val entries: Array[Entry[S, V]],
     val cells = entries.map(entry => {
       RCell(entry.spatial.toString, entry.temporal.toString)
     })
-    val r = STRaster(cells, if(this.data.isInstanceOf[None.type]) None else Some(this.data.toString))
+    val r = STRaster(cells, if (this.data.isInstanceOf[None.type]) None else Some(this.data.toString))
     val spark = SparkSession.builder.getOrCreate()
     import spark.implicits._
     spark.createDataFrame(Array(r)).repartition(1).as[STRaster].write.option("ignoreNullFields", "false").json(dir)
@@ -434,9 +434,9 @@ object Raster {
     Raster(entryArr)
   }
 
-  def apply[S <: Geometry, V, D](entries: Array[Entry[S, V]], data: D): Raster[S, V, D] =
+  def apply[S <: Geometry : ClassTag, V, D](entries: Array[Entry[S, V]], data: D): Raster[S, V, D] =
     new Raster(entries, data)
 
-  def apply[S <: Geometry, V](entries: Array[Entry[S, V]]): Raster[S, V, None.type] =
+  def apply[S <: Geometry : ClassTag, V](entries: Array[Entry[S, V]]): Raster[S, V, None.type] =
     new Raster(entries, None)
 }

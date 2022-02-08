@@ -1,8 +1,9 @@
 package experiments
 
-import instances.{Duration, Extent, Polygon, Trajectory}
+import instances.{Duration, Extent, Polygon, SpatialMap, Trajectory}
 import operators.selector.Selector
 import operators.converter.Traj2SpatialMapConverter
+import operators.extractor.SmFlowExtractor
 import org.apache.spark.sql.SparkSession
 
 import java.lang.System.nanoTime
@@ -57,7 +58,7 @@ object SmSpeedExtraction {
 
       val mergedSm = res.drop(1).foldRight(res.head)((x, y) => x.merge(y, valueMerge, (_, _) => None))
       smRDD.unpersist()
-      println(mergedSm.entries.map(x => (x.value._1 / x.value._2)).deep)
+      println(mergedSm.entries.map(x => x.value._1 / x.value._2).deep)
 
     }
     println(s"Sm speed extraction ${(nanoTime - t) * 1e-9} s")
