@@ -31,5 +31,3 @@ spark-submit \
  ../target/scala-2.12/st4ml-assembly-3.0.jar /datasets/porto_taxi_point_0.4_tstr ../../point_0.4_metadata.json ../datasets/queries_10.txt 23,4 128
 ```
 
-The complete data used for experiments in the paper can be downloaded from https://drive.google.com/drive/folders/1VsTW-1iBFAysVE7KQsBUmIrbcTjMUXNw?usp=sharing.
-
